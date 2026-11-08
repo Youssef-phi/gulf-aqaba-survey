@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Gulf-Aqaba Survey · Host</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bungee&family=Rubik:wght@400;500;700&display=swap">
+<style>
+:root{
+  color-scheme:dark;
+  --bg:#0d0b2e; --fg:#eef0ff; --dim:#9aa0d8;
+  --panel:rgba(16,13,58,.86); --line:rgba(140,150,255,.35);
+  --a:#35d6ff; --b:#ff4fd8; --c:#ffd23f; --d:#5dfc9a; --bad:#ff5a6e;
+  --display:'Bungee','Arial Black',Impact,sans-serif;
+  --body:'Rubik',system-ui,-apple-system,'Segoe UI',sans-serif;
+}
+*{box-sizing:border-box}
+html,body{min-height:100%}
+body{margin:0;background:linear-gradient(180deg,#0d0b2e 0%,#1f1a66 45%,#0a0826 100%) fixed;color:var(--fg);font-family:var(--body);padding:24px 16px 48px}
+[hidden]{display:none!important}
+.wrap{max-width:960px;margin:0 auto;display:flex;flex-direction:column;gap:22px}
+h1{margin:0;font:400 clamp(28px,6vw,48px)/1 var(--display);color:var(--a);text-shadow:0 0 4px var(--fg),3px 3px 0 var(--b),0 0 28px var(--b);text-align:center;text-wrap:balance}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:18px 20px;display:flex;flex-direction:column;gap:12px}
+.row{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+label{font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:var(--dim);font-weight:500}
+input{font:500 18px var(--body);color:var(--fg);background:rgba(13,11,46,.8);border:2px solid var(--line);border-radius:12px;padding:10px 14px;outline:none;min-width:0;flex:1}
+input:focus{border-color:var(--a)}
+.btn{font:400 16px var(--display);color:var(--bg);background:var(--a);border:0;border-radius:12px;padding:11px 22px;cursor:pointer;box-shadow:0 4px 0 var(--b)}
+.btn.alt{background:var(--c)}
+.btn:active{transform:translateY(2px);box-shadow:0 2px 0 var(--b)}
+.btn:focus-visible,input:focus-visible{outline:3px solid var(--c);outline-offset:3px}
+.key{font:400 clamp(34px,9vw,72px)/1 var(--display);color:var(--c);letter-spacing:.06em;text-align:center;text-shadow:0 0 24px var(--c)}
+.link{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.link code{flex:1;min-width:0;overflow-wrap:anywhere;background:rgba(13,11,46,.8);border:1px solid var(--line);border-radius:10px;padding:8px 12px;font-size:14px}
+.muted{color:var(--dim);font-size:14px;margin:0}
+.err{color:var(--bad);font-weight:700;min-height:1.2em}
+table{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums}
+th,td{padding:10px 8px;text-align:left;border-bottom:1px solid var(--line)}
+th{font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--dim);font-weight:500}
+td.num,th.num{text-align:right}
+td.rank{font-family:var(--display);color:var(--c);width:48px}
+tr.top td.rank{color:var(--d)}
+td.pts{font-family:var(--display);font-size:20px}
+.pill{display:inline-block;border-radius:999px;padding:3px 10px;font-size:12px;font-weight:700;letter-spacing:.04em}
+.pill.play{background:rgba(53,214,255,.18);color:var(--a)}
+.pill.done{background:rgba(93,252,154,.18);color:var(--d)}
+.pill.out{background:rgba(255,90,110,.18);color:var(--bad)}
+.pill.idle{background:rgba(154,160,216,.18);color:var(--dim)}
+.bar{height:6px;background:rgba(13,11,46,.8);border-radius:3px;overflow:hidden;min-width:80px}
+.bar i{display:block;height:100%;background:var(--a)}
+.stats{display:flex;gap:18px;flex-wrap:wrap;font-size:13px;letter-spacing:.08em;text-transform:uppercase;color:var(--dim)}
+.stats b{color:var(--fg);font-variant-numeric:tabular-nums}
+.tablewrap{overflow-x:auto}
+@media (max-width:600px){.hide-sm{display:none}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Gulf-Aqaba Survey · Host</h1>
+
+  <div class="card" id="setup">
+    <div class="row">
+      <button class="btn" id="create" type="button">Create a new room</button>
+      <span class="muted">or open an existing one:</span>
+      <input id="roomIn" type="text" maxlength="12" placeholder="Room key, e.g. AQ-4821" style="text-transform:uppercase">
+      <button class="btn alt" id="open" type="button">Open</button>
+    </div>
+    <div class="err" id="err"></div>
+  </div>
+
+  <div class="card" id="roomCard" hidden>
+    <label>Room key</label>
+    <div class="key" id="keyBig"></div>
+    <label>Player link</label>
+    <div class="link"><code id="plink"></code><button class="btn" id="copy" type="button">Copy</button></div>
+    <p class="muted">Players open the link (or type the key on the game's first screen), enter their name, and press Join. The board below updates live.</p>
+  </div>
+
+  <div class="card" id="board" hidden>
+    <div class="row" style="justify-content:space-between">
+      <div class="stats"><span>Players <b id="nPlayers">0</b></span><span>Finished <b id="nDone">0</b></span><span>Top score <b id="topScore">–</b></span></div>
+      <button class="btn alt" id="reset" type="button">Clear players</button>
+    </div>
+    <div class="tablewrap">
+    <table>
+      <thead><tr><th>#</th><th>Player</th><th class="num">Points</th><th class="hide-sm">Progress</th><th class="num hide-sm">Streak</th><th>Status</th></tr></thead>
+      <tbody id="rows"></tbody>
+    </table>
+    </div>
+    <p class="muted" id="empty">Waiting for players to join…</p>
+  </div>
+</div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/13.2.0/firebase-app.js";
+import { getDatabase, ref, get, set, remove, onValue, serverTimestamp } from "https://www.gstatic.com/firebasejs/13.2.0/firebase-database.js";
+const firebaseConfig = {
+  apiKey: "AIzaSyCLKuM_nu8r05GV5ipWjktV1ctJMyRPFqQ",
+  authDomain: "project-6209391350304168421.firebaseapp.com",
+  databaseURL: "https://project-6209391350304168421-default-rtdb.firebaseio.com",
+  projectId: "project-6209391350304168421",
+  storageBucket: "project-6209391350304168421.firebasestorage.app",
+  messagingSenderId: "467006411564",
+  appId: "1:467006411564:web:c28dc5391200960f7dd289"
+};
+const TOTAL_Q = 5;
+const app = initializeApp(firebaseConfig);
+const db = getDatabase(app);
+const $ = id => document.getElementById(id);
+let room = null, unsub = null;
+
+function newKey(){ return 'AQ-' + String(Math.floor(1000 + Math.random()*9000)); }
+function playerLink(key){ const u = new URL('index.html', location.href); u.searchParams.set('room', key); return u.toString(); }
+
+async function createRoom(){
+  $('err').textContent = '';
+  let key, tries = 0;
+  do { key = newKey(); tries++; } while ((await get(ref(db,'rooms/'+key+'/meta'))).exists() && tries < 10);
+  await set(ref(db,'rooms/'+key+'/meta'), { game:'gulf-aqaba-survey', createdAt: serverTimestamp(), closed:false });
+  openRoom(key);
+}
+async function openExisting(){
+  $('err').textContent = '';
+  const key = $('roomIn').value.trim().toUpperCase();
+  if(!key) return;
+  const snap = await get(ref(db,'rooms/'+key+'/meta'));
+  if(!snap.exists()){ $('err').textContent = 'No room with key '+key+'.'; return; }
+  openRoom(key);
+}
+function openRoom(key){
+  room = key;
+  $('keyBig').textContent = key;
+  $('plink').textContent = playerLink(key);
+  $('roomCard').hidden = false; $('board').hidden = false;
+  try { history.replaceState(null, '', '?room='+key); } catch(e){}
+  if(unsub) unsub();
+  unsub = onValue(ref(db,'rooms/'+key+'/players'), snap => render(snap.val() || {}));
+}
+function render(players){
+  const list = Object.entries(players).map(([id,p]) => ({id, ...p}));
+  list.sort((a,b) => (b.points||0)-(a.points||0) || (b.answered||0)-(a.answered||0) || String(a.name).localeCompare(String(b.name)));
+  const tb = $('rows'); tb.textContent = '';
+  list.forEach((p,i) => {
+    const tr = document.createElement('tr'); if(i===0 && list.length>1) tr.className='top';
+    const status = p.finished ? (p.won ? ['done','Finished'] : ['out','Game over']) : (p.answered>0 ? ['play','Playing'] : ['idle','Joined']);
+    const prog = Math.min(TOTAL_Q, p.answered||0);
+    tr.innerHTML = `<td class="rank">${i+1}</td><td></td><td class="num pts"></td>
+      <td class="hide-sm"><div class="bar"><i style="width:${prog/TOTAL_Q*100}%"></i></div><span class="muted">${prog} / ${TOTAL_Q}</span></td>
+      <td class="num hide-sm"></td><td><span class="pill ${status[0]}">${status[1]}</span></td>`;
+    tr.children[1].textContent = p.name || '?';
+    tr.children[2].textContent = p.points ?? 0;
+    tr.children[4].textContent = p.streak ?? 0;
+    tb.appendChild(tr);
+  });
+  $('empty').hidden = list.length > 0;
+  $('nPlayers').textContent = list.length;
+  $('nDone').textContent = list.filter(p => p.finished).length;
+  $('topScore').textContent = list.length ? list[0].points : '–';
+}
+$('create').addEventListener('click', () => createRoom().catch(e => $('err').textContent = e.message));
+$('open').addEventListener('click', () => openExisting().catch(e => $('err').textContent = e.message));
+$('roomIn').addEventListener('keydown', e => { if(e.key==='Enter') openExisting(); });
+$('copy').addEventListener('click', async () => {
+  const t = $('plink').textContent;
+  try { await navigator.clipboard.writeText(t); $('copy').textContent = 'Copied'; setTimeout(()=>$('copy').textContent='Copy', 1500); }
+  catch(e){ const r = document.createRange(); r.selectNodeContents($('plink')); getSelection().removeAllRanges(); getSelection().addRange(r); }
+});
+$('reset').addEventListener('click', () => {
+  if(!room) return;
+  if($('reset').dataset.armed){ remove(ref(db,'rooms/'+room+'/players')); $('reset').textContent='Clear players'; delete $('reset').dataset.armed; }
+  else { $('reset').textContent='Press again to confirm'; $('reset').dataset.armed='1'; setTimeout(()=>{ $('reset').textContent='Clear players'; delete $('reset').dataset.armed; }, 4000); }
+});
+const m = /[?&]room=([^&]+)/.exec(location.search);
+if(m){ $('roomIn').value = decodeURIComponent(m[1]).toUpperCase(); openExisting(); }
+</script>
+</body>
+</html>
