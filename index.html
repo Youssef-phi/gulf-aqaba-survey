@@ -1,0 +1,433 @@
+PASTE-TEST-123<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Gulf-Aqaba Survey</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bungee&family=Rubik:wght@400;500;700&display=swap">
+<style>
+/* Layout: full-screen canvas runway; question floats on top, answer legend sits under the four lanes. Single dark neon look by choice. */
+:root{
+  color-scheme:dark;
+  --bg:#0d0b2e; --bg2:#1a1650; --fg:#eef0ff; --dim:#9aa0d8;
+  --panel:rgba(16,13,58,.86); --line:rgba(140,150,255,.35);
+  --a:#35d6ff; --b:#ff4fd8; --c:#ffd23f; --d:#5dfc9a; --bad:#ff5a6e;
+  --display:'Bungee','Arial Black',Impact,sans-serif;
+  --body:'Rubik',system-ui,-apple-system,'Segoe UI',sans-serif;
+}
+html,body{height:100%}
+body{background:var(--bg);color:var(--fg);font-family:var(--body);overflow:hidden;touch-action:none;user-select:none;-webkit-user-select:none}
+#game{position:relative;height:100%;width:100%;overflow:hidden}
+canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
+#hud{position:absolute;top:0;left:0;right:0;padding:10px 16px;display:flex;flex-direction:column;align-items:center;gap:8px;pointer-events:none}
+#meta{display:flex;gap:14px;flex-wrap:wrap;justify-content:center;font-size:13px;letter-spacing:.08em;text-transform:uppercase;color:var(--dim);font-weight:500}
+#meta b{color:var(--fg);font-variant-numeric:tabular-nums}
+#meta .bet b{color:var(--c)}
+#meta .streak b{color:var(--d)}
+#qwrap{display:flex;align-items:flex-start;gap:8px;max-width:760px;width:100%;pointer-events:auto}
+#question{flex:1;min-width:0;background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:10px 16px;font-size:clamp(14px,2.3vw,19px);font-weight:700;text-align:center;text-wrap:balance;line-height:1.3}
+#question small,#betq small{display:block;font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--dim);font-weight:500;margin-bottom:4px}
+.hintbtn{flex:none;width:46px;height:46px;border-radius:50%;border:2px solid var(--c);background:var(--panel);color:var(--c);font:400 22px var(--display);cursor:pointer;box-shadow:0 0 14px -2px var(--c);position:relative}
+.hintbtn:hover{background:var(--c);color:var(--bg)}
+.hintbtn::after{content:'−50';position:absolute;left:50%;top:100%;transform:translateX(-50%);font:500 10px var(--body);letter-spacing:.06em;color:var(--c);margin-top:2px}
+.hintbtn.used::after{content:'paid'}
+#hintbox{display:none;max-width:760px;width:100%;background:var(--panel);border:1px dashed var(--c);border-radius:12px;padding:8px 14px;font-size:14px;color:var(--fg);text-align:center;pointer-events:auto}
+#hintbox.show{display:block}
+#hintbox b{color:var(--c)}
+#bottom{position:absolute;left:0;right:0;bottom:0;padding:0 16px 12px;display:flex;flex-direction:column;align-items:center;gap:8px}
+#legend{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;width:100%;max-width:900px}
+@media (max-width:620px){#legend{grid-template-columns:repeat(2,1fr)}}
+.ans{min-width:0;background:var(--panel);border:2px solid var(--col);border-radius:10px;padding:6px 8px;text-align:center;font-size:clamp(11px,1.6vw,14px);font-weight:500;line-height:1.25;overflow-wrap:anywhere;cursor:pointer;opacity:.75;transition:opacity .12s,transform .12s}
+.ans b{display:block;font-family:var(--display);color:var(--col);font-size:1.15em}
+.ans.on{opacity:1;transform:translateY(-4px);box-shadow:0 0 18px -2px var(--col)}
+#dash{font:700 14px var(--body);letter-spacing:.06em;text-transform:uppercase;color:var(--bg);background:var(--fg);border:0;border-radius:999px;padding:8px 20px;cursor:pointer}
+button:focus-visible{outline:3px solid var(--c);outline-offset:3px}
+.overlay{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;padding:16px;background:rgba(8,6,32,.78);overflow-y:auto}
+.card{max-width:540px;width:100%;text-align:center;display:flex;flex-direction:column;gap:14px;align-items:center}
+h1{margin:0;font:400 clamp(30px,8vw,56px)/1 var(--display);color:var(--a);text-shadow:0 0 4px var(--fg),3px 3px 0 var(--b),0 0 28px var(--b);transform:rotate(-4deg);text-wrap:balance}
+h2{margin:0;font:400 clamp(22px,5vw,34px)/1.1 var(--display);color:var(--c);text-wrap:balance}
+.card p{margin:0;color:var(--dim);font-size:15px;line-height:1.5}
+.card p strong{color:var(--fg)}
+.rules{text-align:left;background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:14px 18px 14px 34px;margin:0;color:var(--fg);font-size:14px;line-height:1.5;display:flex;flex-direction:column;gap:8px}
+.rules li::marker{color:var(--c);font-family:var(--display)}
+.rules .q{display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:50%;border:2px solid var(--c);color:var(--c);font:400 13px var(--display);vertical-align:middle}
+.rules em{font-style:normal;color:var(--c);font-weight:700}
+.btn{font:400 20px var(--display);color:var(--bg);background:var(--a);border:0;border-radius:12px;padding:12px 34px;cursor:pointer;box-shadow:0 5px 0 var(--b)}
+.btn:active{transform:translateY(3px);box-shadow:0 2px 0 var(--b)}
+#betq{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:12px 22px;font:400 clamp(18px,4vw,26px) var(--display);color:var(--fg);line-height:1.2}
+#bets{display:flex;flex-wrap:wrap;gap:8px;justify-content:center}
+.chip{font:400 18px var(--display);color:var(--fg);background:var(--panel);border:2px solid var(--line);border-radius:999px;padding:10px 18px;cursor:pointer;min-width:84px;transition:transform .12s}
+.chip:hover{transform:translateY(-3px)}
+.chip[data-v="0"]{border-color:var(--dim)}
+.chip[data-v="100"]{border-color:var(--d);color:var(--d)}
+.chip[data-v="200"]{border-color:var(--a);color:var(--a)}
+.chip[data-v="300"]{border-color:var(--c);color:var(--c)}
+.chip[data-v="400"]{border-color:var(--b);color:var(--b)}
+.field{width:100%;display:flex;flex-direction:column;gap:6px;text-align:left}
+.field label{font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:var(--dim);font-weight:500}
+.field input{width:100%;font:500 18px var(--body);color:var(--fg);background:var(--panel);border:2px solid var(--line);border-radius:12px;padding:10px 14px;outline:none}
+.field input:focus{border-color:var(--a)}
+#joinErr{color:var(--bad);font-weight:700;min-height:1.2em}
+#whoami{font-size:13px;letter-spacing:.08em;text-transform:uppercase;color:var(--dim)}
+#whoami b{color:var(--a)}
+#result{font:400 clamp(22px,5vw,34px) var(--display);color:var(--c)}
+#toast{position:absolute;left:50%;top:44%;transform:translate(-50%,-50%);font:400 clamp(28px,7vw,54px) var(--display);text-align:center;pointer-events:none;opacity:0;transition:opacity .2s;text-shadow:0 0 20px currentColor;white-space:nowrap}
+#toast.show{opacity:1}
+#toast small{display:block;font:500 clamp(13px,2.5vw,18px) var(--body);letter-spacing:.08em;text-transform:uppercase}
+</style>
+
+<style>*{box-sizing:border-box}body{margin:0}[hidden]{display:none!important}</style>
+</head>
+<body>
+<div id="game">
+  <canvas id="cv"></canvas>
+  <div id="toast"></div>
+  <div id="hud" hidden>
+    <div id="meta"><span>Question <b id="qn">1</b></span><span>Points <b id="sc">200</b></span><span class="bet">Bet <b id="betv">0</b></span><span class="streak">Streak <b id="stk">0</b></span></div>
+    <div id="qwrap"><div id="question"></div><button class="hintbtn" id="hintPlay" type="button" aria-label="Show hint for 50 points">?</button></div>
+    <div id="hintbox"></div>
+  </div>
+  <div id="bottom" hidden>
+    <div id="legend"></div>
+    <button id="dash" type="button">Jump now</button>
+  </div>
+
+  <div class="overlay" id="menu">
+    <div class="card">
+      <h1>Gulf-Aqaba Survey</h1>
+      <p>Four tiles glide toward you, one per answer. Steer the ball into the lane of the right answer before the tiles arrive.</p>
+      <div class="field"><label for="pname">Your name</label><input id="pname" type="text" maxlength="24" autocomplete="off" placeholder="e.g. Youssef"></div>
+      <div class="field"><label for="proom">Room key</label><input id="proom" type="text" maxlength="12" autocomplete="off" placeholder="e.g. AQ-4821" style="text-transform:uppercase"></div>
+      <div id="joinErr"></div>
+      <button class="btn" id="toRules" type="button">Join</button>
+    </div>
+  </div>
+
+  <div class="overlay" id="rules" hidden>
+    <div class="card">
+      <div id="whoami"></div>
+      <h2>How to play</h2>
+      <ol class="rules">
+        <li>You start with <em>200 points</em>. Before each question you only see its number and type. Bet <em>0, 100, 200, 300 or 400</em>, then the question appears and the tiles start moving.</li>
+        <li>A correct answer adds the bet to your points. A wrong answer subtracts it. If your points drop below zero, the game is over.</li>
+        <li><em>Answer fast.</em> Every 5 seconds you wait, the reward for a correct answer loses 5% (down to 70% of the bet after 25 seconds). Wrong answers always cost the full bet.</li>
+        <li><em>Streak bonus:</em> answer three in a row and your total points are multiplied by 1.5.</li>
+        <li>Press <span class="q">?</span> during a question to reveal its hint. The first look costs <em>50 points</em>.</li>
+        <li>Steer with ← → or A / D, press 1–4 to pick a lane, or tap and drag on the runway. Space or “Jump now” lands early. Answers are shuffled every game.</li>
+      </ol>
+      <button class="btn" id="play" type="button">Play</button>
+    </div>
+  </div>
+
+  <div class="overlay" id="betScreen" hidden>
+    <div class="card">
+      <h2 id="betTitle">Place your bet</h2>
+      <p>You have <strong id="betPts">200</strong> points.</p>
+      <div id="betq"></div>
+      <div id="bets">
+        <button class="chip" data-v="0" type="button">0</button>
+        <button class="chip" data-v="100" type="button">100</button>
+        <button class="chip" data-v="200" type="button">200</button>
+        <button class="chip" data-v="300" type="button">300</button>
+        <button class="chip" data-v="400" type="button">400</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="overlay" id="over" hidden>
+    <div class="card">
+      <h1 id="overTitle">Game over</h1>
+      <div id="result"></div>
+      <p id="detail"></p>
+      <button class="btn" id="again" type="button">Play again</button>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+// ---- Questions: t = type, q = question, a = four answers, c = index of the correct one (0-3), h = hint ----
+var QUESTIONS=[
+ {t:"Specific information",
+  q:"What is the ratio of herbivorous fish biomass in no-take (NT) areas to that in open-access (OA) areas?",
+  a:["4.3:1","2.8:1","3.2:1","4.0:1"],c:0,
+  h:"PDF page 1, Abstract, paragraph 1 (Annotation 2)."},
+ {t:"Inferencing",
+  q:"Why would counting fish alone give a misleading impression of how well a reef’s herbivorous fish community is protected?",
+  a:["Fish counts alone do not provide information about their size, age, or mass.","Biomass is a better measurement because it considers only the maximum fish mass.","Fish counts cannot distinguish herbivorous fish from other fish.","None of the above."],c:0,
+  h:"PDF page 18, Discussion, paragraph 3."},
+ {t:"Main idea / summary",
+  q:"What is the main conclusion of the paper?",
+  a:["Fish numbers alone are sufficient to evaluate reef protection.","Fishing restrictions help maintain herbivorous fish communities and support coral reef health.","Open-access areas provide the best protection for large herbivorous fish.","Fishing management has no relationship with herbivorous fish biomass."],c:1,
+  h:"PDF page 20, Conclusion, paragraphs 1–2."},
+ {t:"Evaluative",
+  q:"Which statement best evaluates the authors’ recommendation to introduce gear restrictions in Nuweiba and Taba?",
+  a:["It is unsupported because the study did not compare fishing management systems.","It proves that gear restrictions will completely restore every reef.","It is supported by higher biomass in gear-restricted reefs than in open-access reefs.","It is unnecessary because open-access reefs had the highest biomass."],c:2,
+  h:"PDF page 18, Discussion, paragraph 2; and PDF page 20, Conclusion, paragraph 2 (Annotation 1)."},
+ {t:"Vocabulary",
+  q:"What does “hampering” mean when the authors describe missing information as “hampering attempts to measure the effectiveness of South Sinai MPAs”?",
+  a:["Making something more difficult.","Making something more accurate.","Completing something successfully.","Encouraging something to happen faster."],c:0,
+  h:"PDF page 3, Introduction, the first complete paragraph on that page (beginning “Herbivorous reef fishes have been studied…”)."}
+];
+var START_POINTS=200;
+var APPROACH_SECONDS=30;   // time the tiles take to reach the player
+var DASH_SPEED=12;         // speed multiplier after "Jump now"
+var HINT_COST=50;
+var STREAK_EVERY=3, STREAK_MULT=1.5;
+var PENALTY_STEP=5, PENALTY_PCT=0.05, PENALTY_FLOOR=0.70;
+
+var COLS=['#35d6ff','#ff4fd8','#ffd23f','#5dfc9a'], LET='ABCD';
+var $=function(id){return document.getElementById(id)};
+var cv=$('cv'),ctx=cv.getContext('2d'),W=0,H=0,DPR=1,S0=100,cx=0,horizon=0,ground=0;
+var D=6,ZFAR=60,SPEED=ZFAR/APPROACH_SECONDS,BEAT=0.55;
+var state='menu',qi=0,cur=null,rem=0,elapsed=0,mult=1,lane=1,bx=1.5,points=0,bet=0,streak=0,hintUsed=false,travel=0,hitT=0,deadT=0,chosen=-1,lastBeat=0,parts=[],stars=[];
+for(var i=0;i<90;i++)stars.push([Math.random(),Math.random(),Math.random()*1.4+.4,Math.random()*6]);
+
+// ---- sound ----
+var ac=null;
+function beep(f,d,type,vol){ if(!ac)return; try{var o=ac.createOscillator(),g=ac.createGain();o.type=type||'sine';o.frequency.value=f;g.gain.value=vol||.08;g.gain.exponentialRampToValueAtTime(.0001,ac.currentTime+d);o.connect(g);g.connect(ac.destination);o.start();o.stop(ac.currentTime+d);}catch(e){} }
+
+function resize(){
+  DPR=Math.min(window.devicePixelRatio||1,2);W=cv.clientWidth;H=cv.clientHeight;
+  cv.width=W*DPR;cv.height=H*DPR;
+  S0=Math.min((W-32)/4,170);cx=W/2;horizon=H*0.36;ground=H*0.70;
+}
+window.addEventListener('resize',resize);resize();
+
+function k(z){return D/(z+D)}
+function px(x,z){return cx+x*S0*k(z)}
+function py(z){return horizon+(ground-horizon)*k(z)}
+function shuffle(a){for(var i=a.length-1;i>0;i--){var j=Math.floor(Math.random()*(i+1)),t=a[i];a[i]=a[j];a[j]=t}return a}
+
+function setPoints(v){points=v;$('sc').textContent=points;$('betPts').textContent=points}
+function setStreak(v){streak=v;$('stk').textContent=streak}
+var toastTimer=0;
+function toast(txt,col,sub){var t=$('toast');t.textContent=txt;if(sub){var s=document.createElement('small');s.textContent=sub;t.appendChild(s)}t.style.color=col;t.classList.add('show');clearTimeout(toastTimer);toastTimer=setTimeout(function(){t.classList.remove('show')},1300)}
+function timeMult(){return Math.max(PENALTY_FLOOR,1-PENALTY_PCT*Math.floor(elapsed/PENALTY_STEP))}
+
+function showBet(){
+  var src=QUESTIONS[qi],idx=shuffle([0,1,2,3]);
+  cur={t:src.t,q:src.q,h:src.h,a:idx.map(function(i){return src.a[i]}),c:idx.indexOf(src.c)};
+  state='bet';
+  $('betTitle').textContent='Question '+(qi+1)+' of '+QUESTIONS.length+': place your bet';
+  $('betq').textContent=cur.t;
+  $('hud').hidden=true;$('bottom').hidden=true;$('betScreen').hidden=false;
+}
+function showHint(){
+  if(state!=='play')return;
+  var b=$('hintbox');
+  if(!hintUsed){hintUsed=true;setPoints(points-HINT_COST);report();$('hintPlay').classList.add('used');toast('-'+HINT_COST,'#ffd23f','hint');beep(420,.1,'square',.05)}
+  b.textContent='';var s=document.createElement('b');s.textContent='Hint (Q'+(qi+1)+') ';b.appendChild(s);b.appendChild(document.createTextNode(cur.h));b.classList.toggle('show');
+}
+
+function startQuestion(b){
+  bet=b;$('betv').textContent=bet;
+  rem=APPROACH_SECONDS;elapsed=0;mult=1;chosen=-1;lastBeat=Math.floor(rem/BEAT);lane=1;bx=1;hintUsed=false;
+  $('hintPlay').classList.remove('used');
+  var qe=$('question');qe.textContent='';var s=document.createElement('small');s.textContent=cur.t;qe.appendChild(s);qe.appendChild(document.createTextNode(cur.q));
+  $('qn').textContent=(qi+1)+' / '+QUESTIONS.length;
+  $('hintbox').classList.remove('show');
+  var L=$('legend');L.textContent='';
+  cur.a.forEach(function(t,i){
+    var d=document.createElement('div');d.className='ans';d.style.setProperty('--col',COLS[i]);
+    var b=document.createElement('b');b.textContent=LET[i];d.appendChild(b);d.appendChild(document.createTextNode(t));
+    d.addEventListener('pointerdown',function(e){e.stopPropagation();setLane(i)});
+    L.appendChild(d);
+  });
+  markLane();
+  $('betScreen').hidden=true;$('hud').hidden=false;$('bottom').hidden=false;
+  state='play';
+}
+function markLane(){var n=$('legend').children;for(var i=0;i<n.length;i++)n[i].classList.toggle('on',i===lane)}
+function setLane(i){if(state!=='play')return;lane=Math.max(0,Math.min(3,i));markLane()}
+function dash(){if(state==='play'&&mult===1){mult=DASH_SPEED;beep(520,.12,'triangle')}}
+
+function start(){
+  if(!ac){try{ac=new (window.AudioContext||window.webkitAudioContext)()}catch(e){}}
+  qi=0;setPoints(START_POINTS);setStreak(0);parts=[];report({finished:false,won:false});
+  $('menu').hidden=true;$('rules').hidden=true;$('over').hidden=true;
+  showBet();
+}
+function finish(win){
+  state='end';
+  $('overTitle').textContent=win?'Finished':'Game over';
+  $('result').textContent=points+' points';
+  $('detail').textContent=win?'You answered all '+QUESTIONS.length+' questions.':'Your points dropped below zero on question '+(qi+1)+'. The correct answer was '+LET[cur.c]+': '+cur.a[cur.c];
+  $('hud').hidden=true;$('bottom').hidden=true;$('betScreen').hidden=true;$('over').hidden=false;
+  report({finished:true,won:win});
+}
+function land(){
+  chosen=lane;
+  if(chosen===cur.c){
+    state='hit';hitT=1;
+    var tm=timeMult(),win=Math.round(bet*tm);
+    setPoints(points+win);setStreak(streak+1);
+    var sub=bet&&tm<1?Math.round(tm*100)+'% of bet':'';
+    if(streak%STREAK_EVERY===0){setPoints(Math.round(points*STREAK_MULT));toast('+'+win,COLS[lane],'streak bonus ×'+STREAK_MULT);hitT=1.4}
+    else toast(bet?'+'+win:'Correct',COLS[lane],sub);
+    report();
+    beep(660,.12,'triangle',.1);setTimeout(function(){beep(990,.2,'triangle',.1)},90);
+    for(var i=0;i<26;i++){var a=Math.random()*6.28,s=60+Math.random()*220;parts.push({x:px(lane-1.5,0),y:ground,vx:Math.cos(a)*s,vy:Math.sin(a)*s*.5-120,t:.7,c:COLS[lane]})}
+  }else{
+    state='dead';deadT=0;setPoints(points-bet);setStreak(0);report();
+    toast(bet?'-'+bet:'Wrong','#ff5a6e');beep(160,.5,'sawtooth',.1);
+  }
+}
+function nextQuestion(){
+  if(points<0){finish(false);return}
+  qi++;report();
+  if(qi>=QUESTIONS.length)finish(true);else showBet();
+}
+
+function update(dt){
+  travel+=dt*SPEED*(state==='play'?mult:state==='hit'?3:state==='dead'?.4:.6);
+  if(state==='play'){
+    rem-=dt*mult;elapsed+=dt;bx+=(lane-bx)*Math.min(1,dt*14);
+    var b=Math.floor(rem/BEAT);if(b!==lastBeat){lastBeat=b;if(mult===1)beep(300,.06,'sine',.04)}
+    if(rem<=0){rem=0;bx=lane;land()}
+  }else if(state==='hit'){
+    hitT-=dt;if(hitT<=0)nextQuestion();
+  }else if(state==='dead'){
+    deadT+=dt;if(deadT>1.6)nextQuestion();
+  }
+  for(var i=parts.length-1;i>=0;i--){var p=parts[i];p.t-=dt;p.x+=p.vx*dt;p.y+=p.vy*dt;p.vy+=500*dt;if(p.t<=0)parts.splice(i,1)}
+}
+
+function quad(x0,x1,z0,z1){
+  ctx.beginPath();ctx.moveTo(px(x0,z0),py(z0));ctx.lineTo(px(x1,z0),py(z0));ctx.lineTo(px(x1,z1),py(z1));ctx.lineTo(px(x0,z1),py(z1));ctx.closePath();
+}
+function draw(now){
+  ctx.setTransform(DPR,0,0,DPR,0,0);
+  var g=ctx.createLinearGradient(0,0,0,H);g.addColorStop(0,'#0d0b2e');g.addColorStop(.36,'#1f1a66');g.addColorStop(.38,'#141046');g.addColorStop(1,'#0a0826');
+  ctx.fillStyle=g;ctx.fillRect(0,0,W,H);
+  for(var i=0;i<stars.length;i++){var s=stars[i];ctx.globalAlpha=.35+.35*Math.sin(now/700+s[3]);ctx.fillStyle='#cfd4ff';ctx.fillRect(s[0]*W,s[1]*horizon,s[2],s[2])}
+  ctx.globalAlpha=1;
+  ctx.lineWidth=1;ctx.strokeStyle='rgba(130,140,255,.28)';
+  for(var l=-2;l<=2;l++){ctx.beginPath();ctx.moveTo(px(l,-1.5),py(-1.5));ctx.lineTo(px(l,ZFAR*3),py(ZFAR*3));ctx.stroke()}
+  var off=travel%3;
+  for(var z=-off;z<ZFAR*1.5;z+=3){if(z<-1.5)continue;ctx.globalAlpha=Math.min(1,k(z)*2.2)*.5;ctx.beginPath();ctx.moveTo(px(-2,z),py(z));ctx.lineTo(px(2,z),py(z));ctx.stroke()}
+  ctx.globalAlpha=1;
+
+  var active=(state==='play'||state==='hit'||state==='dead');
+  if(cur&&active){
+    var tz=rem*SPEED,sc=k(tz);
+    for(var t=0;t<4;t++){
+      var col=COLS[t],alpha=1,fill=col;
+      if(state==='hit'){ if(t!==cur.c)alpha=Math.max(0,hitT-.3); else fill='#ffffff'; }
+      if(state==='dead'){ if(t===chosen)fill='#ff5a6e'; else if(t===cur.c)fill='#ffffff'; else alpha=.25; }
+      ctx.globalAlpha=alpha;
+      var x=t-1.5;
+      ctx.shadowColor=col;ctx.shadowBlur=26*sc+4;
+      quad(x-.42,x+.42,tz-.7,tz+1.1);ctx.fillStyle=fill;ctx.fill();
+      ctx.shadowBlur=0;
+      quad(x-.3,x+.3,tz-.45,tz+.8);ctx.fillStyle='rgba(13,11,46,.55)';ctx.fill();
+      ctx.lineWidth=Math.max(1,3*sc);ctx.strokeStyle='#fff';quad(x-.42,x+.42,tz-.7,tz+1.1);ctx.stroke();
+      var fs=Math.max(11,S0*.42*sc);
+      ctx.font='400 '+fs+'px Bungee, Arial Black, sans-serif';ctx.textAlign='center';ctx.textBaseline='bottom';
+      ctx.fillStyle='#fff';ctx.shadowColor=col;ctx.shadowBlur=10;
+      ctx.fillText(LET[t],px(x,tz),py(tz+1.1)-4*sc-2);ctx.shadowBlur=0;
+    }
+    ctx.globalAlpha=1;
+  }
+
+  if(active){
+    var r=S0*.2,h=0,fall=0;
+    if(state==='play')h=Math.abs(Math.sin(Math.PI*rem/BEAT))*1.05;
+    else if(state==='hit')h=Math.sin(Math.PI*Math.max(0,Math.min(1,1-hitT)))*1.5;
+    else if(state==='dead')fall=Math.min(deadT,1)*Math.min(deadT,1)*900;
+    var X=px(bx-1.5,0),Y=ground-h*S0-r+fall;
+    if(state!=='dead'){
+      ctx.fillStyle='rgba(0,0,0,.45)';ctx.beginPath();ctx.ellipse(X,ground,r*(1-.35*Math.min(1,h)),r*.3*(1-.35*Math.min(1,h)),0,0,6.3);ctx.fill();
+    }
+    var tg=ctx.createLinearGradient(X,Y,X,Y+r*3.2);tg.addColorStop(0,'rgba(120,200,255,.5)');tg.addColorStop(1,'rgba(120,200,255,0)');
+    if(state==='play'&&h>.15){ctx.fillStyle=tg;ctx.beginPath();ctx.moveTo(X-r*.9,Y);ctx.lineTo(X+r*.9,Y);ctx.lineTo(X+r*.3,Y+r*3.2);ctx.lineTo(X-r*.3,Y+r*3.2);ctx.closePath();ctx.fill()}
+    ctx.shadowColor='#7fd4ff';ctx.shadowBlur=30;
+    var bg=ctx.createRadialGradient(X-r*.3,Y-r*.3,r*.1,X,Y,r);bg.addColorStop(0,'#ffffff');bg.addColorStop(1,state==='dead'?'#ff9aa6':'#cfe9ff');
+    ctx.fillStyle=bg;ctx.beginPath();ctx.arc(X,Y,r,0,6.3);ctx.fill();ctx.shadowBlur=0;
+  }
+  for(var p=0;p<parts.length;p++){var q=parts[p];ctx.globalAlpha=Math.max(0,q.t/.7);ctx.fillStyle=q.c;ctx.fillRect(q.x-3,q.y-3,6,6)}
+  ctx.globalAlpha=1;
+}
+
+var last=0;
+function frame(now){var dt=Math.min(.05,(now-last)/1000||0);last=now;update(dt);draw(now);requestAnimationFrame(frame)}
+requestAnimationFrame(frame);
+
+// ---- input ----
+window.addEventListener('keydown',function(e){
+  var c=e.key;
+  if(state==='play'){
+    if(c==='ArrowLeft'||c==='a'||c==='A'){setLane(lane-1);e.preventDefault()}
+    else if(c==='ArrowRight'||c==='d'||c==='D'){setLane(lane+1);e.preventDefault()}
+    else if(c>='1'&&c<='4')setLane(+c-1);
+    else if(c===' '||c==='ArrowUp'||c==='w'||c==='W'){dash();e.preventDefault()}
+    else if(c==='h'||c==='H'||c==='?')showHint();
+  }else if(state==='bet'){
+    if(c>='0'&&c<='4')startQuestion(+c*100);
+  }else if(c==='Enter'||c===' '){
+    if(state==='rules'||state==='end'){start();e.preventDefault()}
+  }
+});
+function laneFromX(x){return Math.round((x-cx)/S0+1.5)}
+var down=false;
+cv.addEventListener('pointerdown',function(e){down=true;setLane(laneFromX(e.clientX))});
+cv.addEventListener('pointermove',function(e){if(down||e.pointerType==='touch')setLane(laneFromX(e.clientX))});
+window.addEventListener('pointerup',function(){down=false});
+$('dash').addEventListener('click',function(){dash();this.blur()});
+function tryJoin(){
+  var name=$('pname').value.trim(),room=$('proom').value.trim().toUpperCase();
+  if(!name){$('joinErr').textContent='Type your name first.';return}
+  if(!room){$('joinErr').textContent='Ask the host for the room key.';return}
+  if(!window.NET){$('joinErr').textContent='Still connecting, try again in a second.';return}
+  $('joinErr').textContent='';$('toRules').disabled=true;
+  window.NET.join(room,name).then(function(){
+    $('whoami').textContent='';var b=document.createElement('b');b.textContent=name;$('whoami').appendChild(document.createTextNode('Playing as '));$('whoami').appendChild(b);$('whoami').appendChild(document.createTextNode(' in room '+room));
+    $('menu').hidden=true;$('rules').hidden=false;state='rules';
+  }).catch(function(err){$('joinErr').textContent=err&&err.message?err.message:'Could not join that room.';$('toRules').disabled=false});
+}
+$('toRules').addEventListener('click',tryJoin);
+$('pname').addEventListener('keydown',function(e){if(e.key==='Enter')tryJoin()});
+$('proom').addEventListener('keydown',function(e){if(e.key==='Enter')tryJoin()});
+(function(){try{var m=/[?&]room=([^&]+)/.exec(location.search);if(m)$('proom').value=decodeURIComponent(m[1]).toUpperCase()}catch(e){}})();
+function report(extra){if(window.NET)window.NET.update(Object.assign({points:points,question:Math.min(qi+1,QUESTIONS.length),answered:qi,streak:streak,finished:state==='end'},extra||{}))}
+$('play').addEventListener('click',start);
+$('again').addEventListener('click',start);
+$('hintPlay').addEventListener('click',showHint);
+var chips=document.querySelectorAll('.chip');
+for(var ci=0;ci<chips.length;ci++)chips[ci].addEventListener('click',function(){startQuestion(+this.getAttribute('data-v'))});
+})();
+</script>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/13.2.0/firebase-app.js";
+import { getDatabase, ref, get, set, update, serverTimestamp } from "https://www.gstatic.com/firebasejs/13.2.0/firebase-database.js";
+const firebaseConfig = {
+  apiKey: "AIzaSyCLKuM_nu8r05GV5ipWjktV1ctJMyRPFqQ",
+  authDomain: "project-6209391350304168421.firebaseapp.com",
+  databaseURL: "https://project-6209391350304168421-default-rtdb.firebaseio.com",
+  projectId: "project-6209391350304168421",
+  storageBucket: "project-6209391350304168421.firebasestorage.app",
+  messagingSenderId: "467006411564",
+  appId: "1:467006411564:web:c28dc5391200960f7dd289"
+};
+const app = initializeApp(firebaseConfig);
+const db = getDatabase(app);
+let room = null, pid = null, secret = null, last = null;
+function rnd(n){const c='abcdefghijklmnopqrstuvwxyz0123456789';let s='';for(let i=0;i<n;i++)s+=c[Math.floor(Math.random()*c.length)];return s}
+window.NET = {
+  async join(key, name){
+    const snap = await get(ref(db, 'rooms/'+key+'/meta'));
+    if(!snap.exists()) throw new Error('No room with key '+key+'. Check it with the host.');
+    if(snap.val().closed) throw new Error('This room is closed.');
+    room = key; pid = rnd(16); secret = rnd(24);
+    await set(ref(db, 'rooms/'+room+'/players/'+pid), {name, secret, points:200, question:1, answered:0, streak:0, finished:false, won:false, joinedAt:serverTimestamp(), updatedAt:serverTimestamp()});
+  },
+  update(data){
+    if(!room) return;
+    const row = Object.assign({}, data, {secret, updatedAt:serverTimestamp()});
+    update(ref(db, 'rooms/'+room+'/players/'+pid), row).catch(e=>console.warn('sync failed', e));
+  }
+};
+</script>
+</body>
+</html>
